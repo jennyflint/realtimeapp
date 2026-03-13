@@ -47,15 +47,15 @@ class MessageService
         $conversation = $this->conversationRepository->findOneBetweenUser($userId, $recipientId);
 
         if (! $conversation) {
-            return ['messages' => []];
+            return ['messages' => [], 'hasMore' => false];
         }
 
-        $messages = $conversation->messages()
+        $paginator = $conversation->messages()
             ->with('sender')
             ->orderBy('created_at', 'desc')
-            ->get();
+            ->paginate(15);
 
-        $messages->transform(function ($message) use ($userId) {
+        $messages = collect($paginator->items())->transform(function ($message) use ($userId) {
             $message->is_unread = ($message->read_at === null && $message->sender_id !== $userId);
 
             return $message;
@@ -69,6 +69,8 @@ class MessageService
         return [
             'conversation_id' => $conversation->id,
             'messages' => $messages,
+            'next_page' => $paginator->currentPage() + 1,
+            'has_more' => $paginator->hasMorePages(),
         ];
     }
 }

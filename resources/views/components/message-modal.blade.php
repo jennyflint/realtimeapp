@@ -1,7 +1,7 @@
 @props(['trigger' => 'isOpen'])
 
-<div x-show="{{ $trigger }}" x-data="chatComponent({ 
-        storeUrl: '{{ route('messages.store') }}', 
+<div x-show="{{ $trigger }}" x-data="chatComponent({
+        storeUrl: '{{ route('messages.store') }}',
         csrfToken: '{{ csrf_token() }}',
         currentUserId: {{ auth()->id() }}
      })" class="fixed inset-0 z-50 overflow-y-auto" style="display: none;" x-transition>
@@ -26,7 +26,12 @@
                 </button>
             </div>
 
-            <div x-ref="messageContainer" class="bg-slate-50 px-4 py-4 h-96 overflow-y-auto space-y-4 flex flex-col">
+            <div x-ref="messageContainer" @scroll="handleScroll"
+                class="bg-slate-50 px-4 py-4 h-96 overflow-y-auto space-y-4 flex flex-col">
+
+                <div x-show="loadingMore" class="flex justify-center py-2">
+                    <div class="text-xs text-indigo-500 animate-pulse">Loading older messages...</div>
+                </div>
 
                 <div x-show="loadingMessages" class="flex justify-center py-10">
                     <svg class="animate-spin h-8 w-8 text-indigo-600" viewBox="0 0 24 24">
@@ -46,45 +51,41 @@
                 <template x-for="msg in messages" :key="msg.id || Math.random()">
                     <div :class="msg.sender_id == currentUserId ? 'self-end items-end' : 'self-start items-start'"
                         class="max-w-[85%] flex flex-col relative group">
-
                         <div :class="{
                             'bg-indigo-600 text-white shadow-md': msg.sender_id == currentUserId,
                             'bg-white border border-gray-200 text-gray-900 shadow-sm': msg.sender_id != currentUserId && !msg.is_unread,
                             'bg-indigo-50 border-2 border-indigo-300 text-indigo-900 shadow-md': msg.sender_id != currentUserId && msg.is_unread
-                            }" class="inline-block p-3 px-4 text-sm leading-relaxed rounded-2xl transition-colors duration-300">
-                                <p x-text="msg.body" class="whitespace-pre-wrap"></p>
+                            }"
+                            class="inline-block p-3 px-4 text-sm leading-relaxed rounded-2xl transition-colors duration-300">
+                            <p x-text="msg.body" class="whitespace-pre-wrap"></p>
                         </div>
 
                         <div class="flex items-center mt-1 px-1 space-x-2">
                             <div class="text-[10px] text-gray-400 font-medium"
                                 x-text="new Date(msg.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})">
                             </div>
-
                             <template x-if="msg.is_unread && msg.sender_id != currentUserId">
                                 <span class="flex h-1.5 w-1.5 rounded-full bg-indigo-500"></span>
                             </template>
                         </div>
                     </div>
                 </template>
+
+                <div x-show="peerIsTyping" x-transition
+                    class="self-start flex items-center space-x-2 bg-gray-200/50 p-2 px-3 rounded-2xl">
+                    <span class="text-[10px] text-gray-500 font-medium"
+                        x-text="recipientName + ' is writing...'"></span>
+                    <div class="flex space-x-1">
+                        <div class="w-1 h-1 bg-gray-400 rounded-full animate-bounce"></div>
+                        <div class="w-1 h-1 bg-gray-400 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
+                        <div class="w-1 h-1 bg-gray-400 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
+                    </div>
+                </div>
             </div>
 
             <form @submit.prevent="send" class="p-4 bg-white border-t border-gray-200">
                 <div class="flex items-end space-x-3">
-                    <div x-ref="messageContainer" ...>
-                        <div x-show="peerIsTyping" x-transition
-                            class="self-start flex items-center space-x-2 bg-gray-200/50 p-2 px-3 rounded-2xl">
-                            <span class="text-[10px] text-gray-500 font-medium"
-                                x-text="recipientName + ' writting...'"></span>
-                            <div class="flex space-x-1">
-                                <div class="w-1 h-1 bg-gray-400 rounded-full animate-bounce"></div>
-                                <div class="w-1 h-1 bg-gray-400 rounded-full animate-bounce [animation-delay:-0.15s]">
-                                </div>
-                                <div class="w-1 h-1 bg-gray-400 rounded-full animate-bounce [animation-delay:-0.3s]">
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <textarea x-model="newMessage" @keydown.enter.prevent="send" rows="1" @input="handleTyping"
+                    <textarea x-model="newMessage" @keydown.enter.prevent="send" @input="handleTyping" rows="1"
                         class="flex-1 border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-xl shadow-sm text-sm p-3 resize-none"
                         placeholder="Write a message..." :disabled="sending"></textarea>
 
@@ -107,52 +108,77 @@
             messages: [],
             newMessage: '',
             loadingMessages: false,
+            loadingMore: false,
             sending: false,
             recipientId: null,
-            messages: [],
+            recipientName: '',
             conversationId: null,
             peerIsTyping: false,
             typingTimeout: null,
 
+            currentPage: 1,
+            hasMore: false,
+
             init() {
                 window.addEventListener('load-messages', (e) => {
                     this.recipientId = e.detail.recipientId;
+                    this.recipientName = e.detail.recipientName || 'User';
+                    this.currentPage = 1;
+                    this.messages = [];
                     this.fetchMessages(this.recipientId);
                 });
             },
 
-            fetchMessages(id) {
-                this.loadingMessages = true;
-                if (this.conversationId) {
-                    window.Echo.leave(`conversation.${this.conversationId}`);
-                }
+            fetchMessages(id, page = 1) {
+                if (page === 1) this.loadingMessages = true;
+                else this.loadingMore = true;
 
-                fetch(`/message/${id}`)
+                fetch(`/message/${id}?page=${page}`)
                     .then(res => res.json())
                     .then(data => {
-                        this.messages = data.messages.reverse();
-                        this.conversationId = data.conversation_id;
-                        this.loadingMessages = false;
+                        const newBatch = data.messages.reverse();
 
-                        this.listenForMessages();
-                        this.scrollToBottom();
+                        if (page === 1) {
+                            this.messages = newBatch;
+                            this.conversationId = data.conversation_id;
+                            this.scrollToBottom();
+                            this.listenForMessages();
+                        } else {
+                            const container = this.$refs.messageContainer;
+                            const previousHeight = container.scrollHeight;
+                            this.messages = [...newBatch, ...this.messages];
+                            this.$nextTick(() => {
+                                container.scrollTop = container.scrollHeight - previousHeight;
+                            });
+                        }
+
+                        this.hasMore = data.has_more;
+                        this.currentPage = data.next_page;
+                        this.loadingMessages = false;
+                        this.loadingMore = false;
                     });
+            },
+
+            handleScroll() {
+                const container = this.$refs.messageContainer;
+                if (container.scrollTop <= 5 && this.hasMore && !this.loadingMore) {
+                    this.fetchMessages(this.recipientId, this.currentPage);
+                }
             },
 
             listenForMessages() {
                 if (!this.conversationId) return;
+                window.Echo.leave(`conversation.${this.conversationId}`);
 
                 window.Echo.private(`conversation.${this.conversationId}`)
                     .listen('MessageSent', (e) => {
-                        if (e.conversation_id == this.conversationId) {
-                            this.messages.push({
-                                id: e.id,
-                                body: e.body,
-                                sender_id: e.sender_id,
-                                created_at: e.created_at
-                            });
-                            this.scrollToBottom();
-                        }
+                        this.messages.push({
+                            id: e.id,
+                            body: e.body,
+                            sender_id: e.sender_id,
+                            created_at: e.created_at
+                        });
+                        this.scrollToBottom();
                     })
                     .listenForWhisper('typing', (e) => {
                         this.peerIsTyping = true;
