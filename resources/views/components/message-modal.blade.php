@@ -46,7 +46,7 @@
                 <template x-for="msg in messages" :key="msg.id || Math.random()">
                     <div :class="msg.sender_id == currentUserId ? 'self-end items-end' : 'self-start items-start'"
                         class="max-w-[85%] flex flex-col">
-                        <div  :class="msg.sender_id == currentUserId 
+                        <div :class="msg.sender_id == currentUserId 
                              ? 'bg-indigo-600 p-4 shadow-md rounded-l-2xl rounded-tr-2xl text-black' 
                              : 'bg-white border p-4  border-gray-200  shadow-sm rounded-r-2xl rounded-tl-2xl text-black'"
                             class="inline-block p-3 px-4 text-sm leading-relaxed">
@@ -61,7 +61,21 @@
 
             <form @submit.prevent="send" class="p-4 bg-white border-t border-gray-200">
                 <div class="flex items-end space-x-3">
-                    <textarea x-model="newMessage" @keydown.enter.prevent="send" rows="1"
+                    <div x-ref="messageContainer" ...>
+                        <div x-show="peerIsTyping" x-transition
+                            class="self-start flex items-center space-x-2 bg-gray-200/50 p-2 px-3 rounded-2xl">
+                            <span class="text-[10px] text-gray-500 font-medium"
+                                x-text="recipientName + ' writting...'"></span>
+                            <div class="flex space-x-1">
+                                <div class="w-1 h-1 bg-gray-400 rounded-full animate-bounce"></div>
+                                <div class="w-1 h-1 bg-gray-400 rounded-full animate-bounce [animation-delay:-0.15s]">
+                                </div>
+                                <div class="w-1 h-1 bg-gray-400 rounded-full animate-bounce [animation-delay:-0.3s]">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <textarea x-model="newMessage" @keydown.enter.prevent="send" rows="1" @input="handleTyping"
                         class="flex-1 border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-xl shadow-sm text-sm p-3 resize-none"
                         placeholder="Write a message..." :disabled="sending"></textarea>
 
@@ -86,6 +100,11 @@
             loadingMessages: false,
             sending: false,
             recipientId: null,
+            messages: [],
+            conversationId: null,
+            peerIsTyping: false,
+            typingTimeout: null,
+
             init() {
                 window.addEventListener('load-messages', (e) => {
                     this.recipientId = e.detail.recipientId;
@@ -95,14 +114,49 @@
 
             fetchMessages(id) {
                 this.loadingMessages = true;
-                this.messages = [];
+                if (this.conversationId) {
+                    window.Echo.leave(`conversation.${this.conversationId}`);
+                }
 
                 fetch(`/message/${id}`)
                     .then(res => res.json())
                     .then(data => {
                         this.messages = data.messages.reverse();
+                        this.conversationId = data.conversation_id;
                         this.loadingMessages = false;
+
+                        this.listenForMessages();
                         this.scrollToBottom();
+                    });
+            },
+
+            listenForMessages() {
+                if (!this.conversationId) return;
+
+                window.Echo.private(`conversation.${this.conversationId}`)
+                    .listen('MessageSent', (e) => {
+                        if (e.conversation_id == this.conversationId) {
+                            this.messages.push({
+                                id: e.id,
+                                body: e.body,
+                                sender_id: e.sender_id,
+                                created_at: e.created_at
+                            });
+                            this.scrollToBottom();
+                        }
+                    })
+                    .listenForWhisper('typing', (e) => {
+                        this.peerIsTyping = true;
+                        clearTimeout(this.typingTimeout);
+                        this.typingTimeout = setTimeout(() => this.peerIsTyping = false, 3000);
+                    });
+            },
+
+            handleTyping() {
+                if (!this.conversationId) return;
+                window.Echo.private(`conversation.${this.conversationId}`)
+                    .whisper('typing', {
+                        typing: true
                     });
             },
 

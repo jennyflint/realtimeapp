@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Events\MessageSent;
 use App\Models\Conversation;
 use App\Models\Message;
 use App\Repositories\Interfaces\ConversationRepositoryInterface;
@@ -26,11 +27,15 @@ class MessageService
                 ]);
             }
 
-            return Message::create([
+            $message = Message::create([
                 'conversation_id' => $conversation->id,
                 'sender_id' => $senderId,
                 'body' => $body,
             ]);
+
+            broadcast(new MessageSent($message))->toOthers();
+
+            return $message;
         });
     }
 }
