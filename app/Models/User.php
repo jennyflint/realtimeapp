@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use Database\Factories\UserFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -12,6 +14,9 @@ use Illuminate\Notifications\Notifiable;
  * @property int $id
  * @property string $name
  * @property string $email
+ * @property int|null $unread_count
+ *
+ * @mixin Builder<self>
  */
 class User extends Authenticatable
 {
@@ -60,6 +65,9 @@ class User extends Authenticatable
         return $this->belongsToMany(Conversation::class);
     }
 
+    /**
+     * @return HasMany<Message, $this>
+     */
     public function messages(): HasMany
     {
         return $this->hasMany(Message::class, 'sender_id');

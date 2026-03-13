@@ -38,4 +38,37 @@ class MessageService
             return $message;
         });
     }
+
+    /**
+     * @return array<array, mixed>
+     */
+    public function getConversationMessages(int $userId, int $recipientId): array
+    {
+        $conversation = $this->conversationRepository->findOneBetweenUser($userId, $recipientId);
+
+        if (! $conversation) {
+            return ['messages' => []];
+        }
+
+        $messages = $conversation->messages()
+            ->with('sender')
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        $messages->transform(function ($message) use ($userId) {
+            $message->is_unread = ($message->read_at === null && $message->sender_id !== $userId);
+
+            return $message;
+        });
+
+        $conversation->messages()
+            ->where('sender_id', $recipientId)
+            ->whereNull('read_at')
+            ->update(['read_at' => now()]);
+
+        return [
+            'conversation_id' => $conversation->id,
+            'messages' => $messages,
+        ];
+    }
 }

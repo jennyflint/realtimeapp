@@ -45,15 +45,24 @@
 
                 <template x-for="msg in messages" :key="msg.id || Math.random()">
                     <div :class="msg.sender_id == currentUserId ? 'self-end items-end' : 'self-start items-start'"
-                        class="max-w-[85%] flex flex-col">
-                        <div :class="msg.sender_id == currentUserId 
-                             ? 'bg-indigo-600 p-4 shadow-md rounded-l-2xl rounded-tr-2xl text-black' 
-                             : 'bg-white border p-4  border-gray-200  shadow-sm rounded-r-2xl rounded-tl-2xl text-black'"
-                            class="inline-block p-3 px-4 text-sm leading-relaxed">
-                            <p x-text="msg.body" class="whitespace-pre-wrap text-black"></p>
+                        class="max-w-[85%] flex flex-col relative group">
+
+                        <div :class="{
+                            'bg-indigo-600 text-white shadow-md': msg.sender_id == currentUserId,
+                            'bg-white border border-gray-200 text-gray-900 shadow-sm': msg.sender_id != currentUserId && !msg.is_unread,
+                            'bg-indigo-50 border-2 border-indigo-300 text-indigo-900 shadow-md': msg.sender_id != currentUserId && msg.is_unread
+                            }" class="inline-block p-3 px-4 text-sm leading-relaxed rounded-2xl transition-colors duration-300">
+                                <p x-text="msg.body" class="whitespace-pre-wrap"></p>
                         </div>
-                        <div class="text-[10px] text-gray-500 mt-1 font-medium px-1"
-                            x-text="new Date(msg.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})">
+
+                        <div class="flex items-center mt-1 px-1 space-x-2">
+                            <div class="text-[10px] text-gray-400 font-medium"
+                                x-text="new Date(msg.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})">
+                            </div>
+
+                            <template x-if="msg.is_unread && msg.sender_id != currentUserId">
+                                <span class="flex h-1.5 w-1.5 rounded-full bg-indigo-500"></span>
+                            </template>
                         </div>
                     </div>
                 </template>

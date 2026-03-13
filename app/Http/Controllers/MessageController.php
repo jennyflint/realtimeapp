@@ -4,42 +4,31 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreMessageRequest;
 use App\Models\User;
-use App\Repositories\Interfaces\ConversationRepositoryInterface;
 use App\Services\MessageService;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
 class MessageController extends Controller
 {
-    public function show(int $recipientId, Request $request, ConversationRepositoryInterface $conversationRepository): Response
+    public function __construct(
+        private MessageService $messageService
+    ) {}
+
+    public function show(int $recipientId, Request $request): Response
     {
         $userId = (int) $request->user()?->getAuthIdentifier();
-        $conversation = $conversationRepository->findOneBetweenUser($userId, $recipientId);
 
-        if (! $conversation) {
-            return response()->json([
-                'messages' => [],
-            ]);
-        }
-
-        $messages = $conversation
-            ->messages()
-            ->with('sender')
-            ->orderBy('created_at', 'desc')
-            ->get();
-
-        return response()->json([
-            'conversation_id' => $conversation->id,
-            'messages' => $messages,
-        ]);
+        return response()->json(
+            $this->messageService->getConversationMessages($userId, $recipientId)
+        );
     }
 
-    public function store(StoreMessageRequest $request, MessageService $messageService): Response
+    public function store(StoreMessageRequest $request): Response
     {
         /** @var User $sender */
         $sender = $request->user();
 
-        $message = $messageService->sendMessage(
+        $message = $this->messageService->sendMessage(
             $sender->id,
             (int) $request->validated('recipient_id'),
             $request->validated('message')
