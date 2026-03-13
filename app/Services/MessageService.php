@@ -33,7 +33,7 @@ class MessageService
                 'body' => $body,
             ]);
 
-            broadcast(new MessageSent($message))->toOthers();
+            broadcast(new MessageSent($message, $recipientId))->toOthers();
 
             return $message;
         });
@@ -56,7 +56,7 @@ class MessageService
             ->paginate(15);
 
         $messages = collect($paginator->items())->transform(function ($message) use ($userId) {
-            $message->is_unread = ($message->read_at === null && $message->sender_id !== $userId);
+            $message->setAttribute('is_unread', ($message->read_at === null && $message->sender_id !== $userId));
 
             return $message;
         });

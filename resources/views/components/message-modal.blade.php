@@ -172,13 +172,15 @@
 
                 window.Echo.private(`conversation.${this.conversationId}`)
                     .listen('MessageSent', (e) => {
-                        this.messages.push({
-                            id: e.id,
-                            body: e.body,
-                            sender_id: e.sender_id,
-                            created_at: e.created_at
-                        });
-                        this.scrollToBottom();
+                        if (e.sender_id !== config.currentUserId) {
+                            this.messages.push({
+                                id: e.id,
+                                body: e.body,
+                                sender_id: e.sender_id,
+                                created_at: e.created_at
+                            });
+                            this.scrollToBottom();
+                        }
                     })
                     .listenForWhisper('typing', (e) => {
                         this.peerIsTyping = true;
