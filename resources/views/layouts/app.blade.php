@@ -8,6 +8,7 @@
     <title>{{ $title ?? 'My Laravel App' }}</title>
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
 </head>
 
 <body class="font-sans antialiased bg-gray-100">
