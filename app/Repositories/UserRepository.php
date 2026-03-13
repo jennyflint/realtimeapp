@@ -8,11 +8,18 @@ use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
 class UserRepository implements UserRepositoryInterface
 {
-    public function getPaginatedExcept(int $excludeId, int $perPage = 15): LengthAwarePaginator
+    public function paginateUsersForInbox(int $authId, int $perPage = 15): LengthAwarePaginator
     {
         return User::query()
-            ->where('id', '!=', $excludeId)
-            ->latest()
+            ->where('id', '!=', $authId)
+            ->withCount(['messages as unread_count' => function ($query) use ($authId) {
+                $query->whereNull('read_at')
+                    ->whereHas('conversation', function ($q) use ($authId) {
+                        $q->whereHas('users', fn ($sq) => $sq->where('users.id', $authId));
+                    });
+            }])
+            ->orderByRaw('unread_count DESC')
+            ->orderBy('name', 'ASC')
             ->paginate($perPage);
     }
 }

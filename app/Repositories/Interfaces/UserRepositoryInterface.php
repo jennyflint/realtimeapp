@@ -8,7 +8,9 @@ use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 interface UserRepositoryInterface
 {
     /**
+     * Paginate users for inbox, excluding the authenticated user.
+     *
      * @return LengthAwarePaginator<int, User>
      */
-    public function getPaginatedExcept(int $excludeId, int $perPage = 15): LengthAwarePaginator;
+    public function paginateUsersForInbox(int $authId, int $perPage = 15): LengthAwarePaginator;
 }

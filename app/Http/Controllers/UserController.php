@@ -14,7 +14,7 @@ class UserController extends Controller
 
     public function index(PaginationRequest $request): View
     {
-        $users = $this->userRepository->getPaginatedExcept(
+        $users = $this->userRepository->paginateUsersForInbox(
             $request->user()->id,
             $request->perPage()
         );
