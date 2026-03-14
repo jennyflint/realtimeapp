@@ -16,20 +16,37 @@ class MessageController extends Controller
 
     public function show(int $recipientId, Request $request): Response
     {
-        $userId = (int) $request->user()?->getAuthIdentifier();
+        /** @var User $user */
+        $user = $request->user();
+        $paginator = $this->messageService->paginatedConversationMessages($user->id, $recipientId);
 
-        return response()->json(
-            $this->messageService->getConversationMessages($userId, $recipientId)
-        );
+        if ($paginator) {
+            $messages = $paginator->items();
+
+            if ($messages) {
+                $messages = $this->messageService->markAsRead($messages, $user->id);
+            }
+
+            $data = [
+                'conversation_id' => $messages ? $messages->first()?->conversation_id : null,
+                'messages' => $messages,
+                'next_page' => $paginator->currentPage() + 1,
+                'has_more' => $paginator->hasMorePages(),
+            ];
+        } else {
+            $data = ['messages' => [], 'hasMore' => false];
+        }
+
+        return response()->json($data);
     }
 
     public function store(StoreMessageRequest $request): Response
     {
-        /** @var User $sender */
-        $sender = $request->user();
+        /** @var User $user */
+        $user = $request->user();
 
         $message = $this->messageService->sendMessage(
-            $sender->id,
+            $user->id,
             (int) $request->validated('recipient_id'),
             $request->validated('message')
         );

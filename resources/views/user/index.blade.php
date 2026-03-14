@@ -48,54 +48,55 @@
 
                     <div class="divide-y divide-gray-200">
                         @foreach ($users as $user)
-                                            <div
-                                                class="grid grid-cols-1 md:grid-cols-12 p-4 md:px-6 md:py-4 items-center hover:bg-gray-50 transition duration-150 {{ $user->unread_count > 0 ? 'bg-indigo-50/30' : '' }}">
+                        <div
+                            class="grid grid-cols-1 md:grid-cols-12 p-4 md:px-6 md:py-4 items-center hover:bg-gray-50 transition duration-150 {{ $user->unread_count > 0 ? 'bg-indigo-50/30' : '' }}">
 
-                                                <div class="col-span-1 md:col-span-4 flex items-center mb-2 md:mb-0">
-                                                    <div class="relative h-10 w-10 shrink-0">
-                                                        <div
-                                                            class="h-full w-full rounded-full {{ $user->unread_count > 0 ? 'bg-indigo-600' : 'bg-indigo-500' }} flex items-center justify-center text-white font-bold shadow-sm">
-                                                            {{ strtoupper(substr($user->name, 0, 1)) }}
-                                                        </div>
-                                                        @if($user->unread_count > 0)
-                                                            <span
-                                                                class="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-600 text-[10px] font-bold text-white border-2 border-white animate-pulse">
-                                                                {{ $user->unread_count }}
-                                                            </span>
-                                                        @endif
-                                                    </div>
+                            <div class="col-span-1 md:col-span-4 flex items-center mb-2 md:mb-0">
+                                <div class="relative h-10 w-10 shrink-0">
+                                    <div
+                                        class="h-full w-full rounded-full {{ $user->unread_count > 0 ? 'bg-indigo-600' : 'bg-indigo-500' }} flex items-center justify-center text-white font-bold shadow-sm">
+                                        {{ strtoupper(substr($user->name, 0, 1)) }}
+                                    </div>
+                                    @if($user->unread_count > 0)
+                                    <span
+                                        class="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-600 text-[10px] font-bold text-white border-2 border-white animate-pulse">
+                                        {{ $user->unread_count }}
+                                    </span>
+                                    @endif
+                                </div>
 
-                                                    <div class="ml-4">
-                                                        <div
-                                                            class="text-sm {{ $user->unread_count > 0 ? 'font-bold text-indigo-900' : 'font-medium text-gray-900' }}">
-                                                            {{ $user->name }}
-                                                        </div>
-                                                        <div class="text-xs text-gray-500 md:hidden truncate max-w-[200px]">
-                                                            {{ $user->email }}
-                                                        </div>
-                                                    </div>
-                                                </div>
+                                <div class="ml-4">
+                                    <div
+                                        class="text-sm {{ $user->unread_count > 0 ? 'font-bold text-indigo-900' : 'font-medium text-gray-900' }}">
+                                        {{ $user->name }}
+                                    </div>
+                                    <div class="text-xs text-gray-500 md:hidden truncate max-w-[200px]">
+                                        {{ $user->email }}
+                                    </div>
+                                </div>
+                            </div>
 
-                                                <div class="hidden md:block col-span-5 text-sm text-gray-600 truncate px-2">
-                                                    {{ $user->email }}
-                                                </div>
+                            <div class="hidden md:block col-span-5 text-sm text-gray-600 truncate px-2">
+                                {{ $user->email }}
+                            </div>
 
-                                                <div class="col-span-1 md:col-span-3 text-left md:text-right mt-2 md:mt-0">
-                                                    <button @click="openModal({{ $user->id }}, @js($user->name))" class="w-full md:w-auto inline-flex justify-center items-center px-4 py-2 border rounded-md font-semibold text-xs uppercase tracking-widest transition ease-in-out duration-150 
-                                                                                {{ $user->unread_count > 0
+                            <div class="col-span-1 md:col-span-3 text-left md:text-right mt-2 md:mt-0">
+                                <button @click="openModal({{ $user->id }}, @js($user->name))"
+                                    class="w-full md:w-auto inline-flex justify-center items-center px-4 py-2 border rounded-md font-semibold text-xs uppercase tracking-widest transition ease-in-out duration-150 
+                                                                                                    {{ $user->unread_count > 0
                             ? 'bg-indigo-600 text-white border-transparent hover:bg-indigo-700 active:bg-indigo-800'
                             : 'bg-indigo-50 text-indigo-700 border-transparent hover:bg-indigo-100 active:bg-indigo-200' 
-                                                                                }} focus:outline-none focus:ring ring-indigo-300">
+                                                                                                    }} focus:outline-none focus:ring ring-indigo-300">
 
-                                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1.5" fill="none"
-                                                            viewBox="0 0 24 24" stroke="currentColor">
-                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                                d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-                                                        </svg>
-                                                        {{ $user->unread_count > 0 ? __('New Messages') : __('Send Message') }}
-                                                    </button>
-                                                </div>
-                                            </div>
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1.5" fill="none"
+                                        viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                                    </svg>
+                                    {{ $user->unread_count > 0 ? __('New Messages') : __('Send Message') }}
+                                </button>
+                            </div>
+                        </div>
                         @endforeach
                     </div>
 
@@ -123,7 +124,9 @@
                 this.recipientId = id;
                 this.recipientName = name;
                 this.isOpen = true;
-                this.$dispatch('load-messages', { recipientId: id });
+                this.$dispatch('load-messages', {
+                    recipientId: id
+                });
             },
 
             notify(e) {

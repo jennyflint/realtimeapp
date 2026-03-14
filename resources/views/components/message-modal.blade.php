@@ -177,7 +177,7 @@
                                 id: e.id,
                                 body: e.body,
                                 sender_id: e.sender_id,
-                                created_at: e.created_at
+                                created_at: new Date().toISOString()
                             });
                             this.scrollToBottom();
                         }

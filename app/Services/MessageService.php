@@ -6,7 +6,8 @@ use App\Events\MessageSent;
 use App\Models\Conversation;
 use App\Models\Message;
 use App\Repositories\Interfaces\ConversationRepositoryInterface;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Collection;
 
 class MessageService
 {
@@ -16,61 +17,66 @@ class MessageService
 
     public function sendMessage(int $senderId, int $recipientId, string $body): Message
     {
-        return DB::transaction(function () use ($senderId, $recipientId, $body) {
-            $conversation = $this->conversationRepository->findOneBetweenUser($senderId, $recipientId);
 
-            if (! $conversation) {
-                $conversation = Conversation::create();
-                $conversation->users()->attach([
-                    $senderId,
-                    $recipientId,
-                ]);
-            }
+        $conversation = $this->conversationRepository->findOneBetweenUser($senderId, $recipientId);
 
-            $message = Message::create([
-                'conversation_id' => $conversation->id,
-                'sender_id' => $senderId,
-                'body' => $body,
+        if (! $conversation) {
+            $conversation = Conversation::create();
+            $conversation->users()->attach([
+                $senderId,
+                $recipientId,
             ]);
+        }
 
-            broadcast(new MessageSent($message, $recipientId))->toOthers();
+        $message = Message::create([
+            'conversation_id' => $conversation->id,
+            'sender_id' => $senderId,
+            'body' => $body,
+        ]);
 
-            return $message;
-        });
+        broadcast(new MessageSent($message, $recipientId))->toOthers();
+
+        return $message;
     }
 
     /**
-     * @return array<array, mixed>
+     * @return LengthAwarePaginator<int, Message>|null
      */
-    public function getConversationMessages(int $userId, int $recipientId): array
+    public function paginatedConversationMessages(int $userId, int $recipientId): ?LengthAwarePaginator
     {
         $conversation = $this->conversationRepository->findOneBetweenUser($userId, $recipientId);
 
         if (! $conversation) {
-            return ['messages' => [], 'hasMore' => false];
+            return null;
         }
 
-        $paginator = $conversation->messages()
+        return $conversation->messages()
             ->with('sender')
             ->orderBy('created_at', 'desc')
             ->paginate(15);
+    }
 
-        $messages = collect($paginator->items())->transform(function ($message) use ($userId) {
-            $message->setAttribute('is_unread', ($message->read_at === null && $message->sender_id !== $userId));
+    /**
+     * @param  iterable<int, Message>  $messages
+     * @return Collection<int, Message>
+     */
+    public function markAsRead(iterable $messages, int $senderId): Collection
+    {
+        $messages = collect($messages)->transform(function (Message $message) use ($senderId) {
+            $message->setAttribute('is_unread', ($message->read_at === null && $message->sender_id !== $senderId));
 
             return $message;
         });
 
-        $conversation->messages()
-            ->where('sender_id', $recipientId)
-            ->whereNull('read_at')
-            ->update(['read_at' => now()]);
+        $messageIds = $messages->pluck('id');
 
-        return [
-            'conversation_id' => $conversation->id,
-            'messages' => $messages,
-            'next_page' => $paginator->currentPage() + 1,
-            'has_more' => $paginator->hasMorePages(),
-        ];
+        if ($messageIds->isNotEmpty()) {
+            Message::whereIn('id', $messageIds)
+                ->where('sender_id', '!=', $senderId)
+                ->whereNull('read_at')
+                ->update(['read_at' => now()]);
+        }
+
+        return $messages;
     }
 }
